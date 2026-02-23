@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Isekai Adventure</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Màn hình tạo nhân vật -->
+  <div id="setup-screen">
+    <div class="bg-overlay"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="setup-wrapper">
+      <div class="setup-left">
+        <div class="logo-area">
+          <div class="logo-icon">⚔️</div>
+          <h1 class="logo-title">ISEKAI</h1>
+          <h2 class="logo-subtitle">ADVENTURE</h2>
+          <p class="logo-desc">Một thế giới mới đang chờ đón bạn.<br>Hãy kể về bản thân và bắt đầu hành trình.</p>
+        </div>
+      </div>
+
+      <div class="setup-right">
+        <div class="setup-card">
+  <h3 class="card-title">✦ Tạo Nhân Vật ✦</h3>
+  <div class="continue-section" id="continue-section" style="display:none">
+  <div class="template-label">Tiếp tục hành trình cũ</div>
+  <div id="saves-list"></div>
+  <div class="sidebar-divider" style="margin: 16px 0"></div>
+</div>
+
+  <div class="template-section">
+    <div class="template-label">Chọn kịch bản mẫu hoặc tự nhập</div>
+    <div class="template-grid">
+      <button class="template-btn" onclick="loadTemplate(0)">⚔️ Anh hùng</button>
+      <button class="template-btn" onclick="loadTemplate(1)">😈 Phản diện</button>
+      <button class="template-btn" onclick="loadTemplate(2)">🏕️ Sinh tồn</button>
+      <button class="template-btn" onclick="loadTemplate(3)">👑 Quý tộc</button>
+      <button class="template-btn" onclick="loadTemplate(4)">🎭 Bị hiểu nhầm</button>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Tên nhân vật</label>
+    <input type="text" id="char-name" placeholder="Ví dụ: Kira Yamato...">
+  </div>
+
+  <div class="form-group">
+    <label>Tên thế giới</label>
+    <input type="text" id="char-world" placeholder="Ví dụ: Eldoria, Astravia...">
+  </div>
+
+  <div class="form-group">
+    <label>Kỹ năng độc nhất</label>
+    <input type="text" id="char-skill" placeholder="Ví dụ: Sao chép mọi ma thuật...">
+  </div>
+
+  <div class="form-group">
+    <label>Tiểu sử</label>
+    <textarea id="char-backstory" rows="3" placeholder="Kể ngắn gọn về bản thân trước khi được triệu hồi..."></textarea>
+  </div>
+
+  <button id="start-btn" onclick="startGame()">
+    <span class="btn-icon">🌀</span>
+    <span>Bắt đầu hành trình</span>
+  </button>
+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Màn hình chơi game -->
+  <div id="game-screen" class="hidden">
+    <div class="game-bg"></div>
+
+    <div class="game-layout">
+      <!-- Sidebar -->
+      <!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">⚔️ ISEKAI</div>
+  <div class="char-info">
+    <div class="char-avatar">👤</div>
+    <div class="char-name-display" id="sidebar-name">Nhân vật</div>
+    <div class="char-world-display" id="sidebar-world">Thế giới</div>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="char-skill-label">Kỹ năng</div>
+  <div class="char-skill-display" id="sidebar-skill">—</div>
+  <div class="sidebar-divider"></div>
+  <div class="char-skill-label">Nhân vật</div>
+  <div id="npc-list"></div>
+</div>
+
+      <!-- Main game area -->
+      <div class="game-main">
+        <div class="game-topbar">
+  <button class="back-btn" onclick="backToMenu()">← Màn hình chính</button>
+  <div class="chapter-label">📖 Đang phiêu lưu tại: <span id="world-title-top">—</span></div>
+  <button class="save-btn" onclick="saveGame()">💾 Lưu game</button>
+</div>
+
+        <div id="story-box">
+          <div id="story-content"></div>
+        </div>
+
+        <div class="input-area">
+          <textarea id="player-input" rows="2" placeholder="Bạn sẽ làm gì? (Enter để gửi, Shift+Enter để xuống dòng)"></textarea>
+          <button id="send-btn" onclick="sendMessage()">
+            <span>Gửi</span>
+            <span class="send-icon">➤</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
