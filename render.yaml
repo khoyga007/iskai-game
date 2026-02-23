@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: isekai-game
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: GEMINI_EMBEDDING_MODEL
+        value: models/text-embedding-004
