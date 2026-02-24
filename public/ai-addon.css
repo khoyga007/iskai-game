@@ -1,4 +1,3 @@
-
 /* ========== AI SELECTOR ========== */
 
 .ai-selector {
@@ -49,24 +48,10 @@
   font-size: 0.65rem;
 }
 
-.ai-icon {
-  font-size: 1.1rem;
-}
+.ai-icon { font-size: 1.1rem; }
+.ai-name { font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 1px; }
+.ai-desc { font-size: 0.68rem; opacity: 0.6; font-style: italic; }
 
-.ai-name {
-  font-family: 'Cinzel', serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.ai-desc {
-  font-size: 0.68rem;
-  opacity: 0.6;
-  font-style: italic;
-}
-
-/* AI Badge trong sidebar */
 .ai-badge-sidebar {
   font-family: 'Cinzel', serif;
   font-size: 0.85rem;
@@ -76,11 +61,201 @@
   padding: 4px 0;
 }
 
-/* Save card provider label */
 .save-provider {
   font-size: 0.7rem;
   font-style: italic;
   margin-top: 2px;
   font-family: 'Cinzel', serif;
   letter-spacing: 1px;
+}
+
+/* ========== GEAR BUTTON ========== */
+
+.gear-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.gear-btn:hover {
+  background: rgba(201, 168, 76, 0.15);
+  border-color: rgba(201, 168, 76, 0.5);
+  transform: rotate(30deg);
+}
+
+/* ========== SETTINGS MODAL ========== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  background: #0f0f20;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 16px;
+  width: 460px;
+  max-width: 95vw;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(201,168,76,0.1);
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: #c9a84c;
+  letter-spacing: 2px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #6a7080;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover { color: #e0d9c8; background: rgba(255,255,255,0.05); }
+
+.modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-desc {
+  font-size: 0.85rem;
+  color: #6a7080;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.api-key-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.api-key-label {
+  font-size: 0.8rem;
+  color: #8a9bb5;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.get-key-link {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #c9a84c;
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.get-key-link:hover { opacity: 1; }
+
+.api-key-input-wrap {
+  display: flex;
+  gap: 6px;
+}
+
+.api-key-input-wrap input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #e0d9c8;
+  font-family: monospace;
+  font-size: 0.85rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.api-key-input-wrap input:focus {
+  border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(255,255,255,0.07);
+}
+
+.toggle-vis {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  color: #6a7080;
+}
+
+.toggle-vis:hover { background: rgba(255,255,255,0.08); color: #e0d9c8; }
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.settings-status {
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.modal-save-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #c9a84c, #a0722a);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(201, 168, 76, 0.4);
 }

@@ -1,12 +1,12 @@
-// ai-adapter.js — unified AI call layer
+// ai-adapter.js — unified AI call layer với dynamic API key
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-let anthropicSDK, openaiSDK, groqSDK;
+function getProvider(provider, apiKey) {
+  if (!apiKey) throw new Error(`Chưa có API key cho ${provider}. Mở ⚙️ để cấu hình.`);
 
-function getProvider(provider) {
   switch (provider) {
     case 'gemini': {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const genAI = new GoogleGenerativeAI(apiKey);
       return async (prompt) => {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const result = await model.generateContent(prompt);
@@ -15,8 +15,8 @@ function getProvider(provider) {
     }
 
     case 'claude': {
-      if (!anthropicSDK) anthropicSDK = require('@anthropic-ai/sdk');
-      const client = new anthropicSDK.Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const { Anthropic } = require('@anthropic-ai/sdk');
+      const client = new Anthropic({ apiKey });
       return async (prompt) => {
         const msg = await client.messages.create({
           model: 'claude-sonnet-4-20250514',
@@ -28,8 +28,8 @@ function getProvider(provider) {
     }
 
     case 'openai': {
-      if (!openaiSDK) openaiSDK = require('openai');
-      const client = new openaiSDK.OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const { OpenAI } = require('openai');
+      const client = new OpenAI({ apiKey });
       return async (prompt) => {
         const res = await client.chat.completions.create({
           model: 'gpt-4o',
@@ -40,8 +40,8 @@ function getProvider(provider) {
     }
 
     case 'groq': {
-      if (!groqSDK) groqSDK = require('groq-sdk');
-      const client = new groqSDK.Groq({ apiKey: process.env.GROQ_API_KEY });
+      const { Groq } = require('groq-sdk');
+      const client = new Groq({ apiKey });
       return async (prompt) => {
         const res = await client.chat.completions.create({
           model: 'llama-3.3-70b-versatile',

@@ -60,11 +60,91 @@ async function checkAvailableProviders() {
       const p = btn.dataset.provider;
       if (!available[p]) {
         btn.classList.add('unavailable');
-        btn.title = 'Chưa cấu hình API key';
+        btn.title = 'Chưa có API key — mở ⚙️ để nhập';
+      } else {
+        btn.classList.remove('unavailable');
+        btn.title = '';
       }
     });
   } catch {}
 }
+
+// ========== SETTINGS MODAL ==========
+
+async function openSettings() {
+  // Load key hiện tại từ server (chỉ load placeholder để biết key nào đã set)
+  try {
+    const res = await fetch('/api/settings');
+    const data = await res.json();
+    // Chỉ hiển thị placeholder nếu key đã có, không hiển thị giá trị thật
+    ['gemini', 'claude', 'openai', 'groq'].forEach(p => {
+      const input = document.getElementById(`key-${p}`);
+      if (input) {
+        input.value = '';
+        input.placeholder = data[p] ? '••••••••••••••••••• (đã cấu hình)' : getDefaultPlaceholder(p);
+      }
+    });
+  } catch {}
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+  document.getElementById('settings-status').textContent = '';
+}
+
+function getDefaultPlaceholder(provider) {
+  const map = { gemini: 'AIza...', claude: 'sk-ant-...', openai: 'sk-...', groq: 'gsk_...' };
+  return map[provider] || '';
+}
+
+function toggleVis(id) {
+  const input = document.getElementById(id);
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function saveSettings() {
+  const keys = {
+    gemini: document.getElementById('key-gemini').value.trim(),
+    claude: document.getElementById('key-claude').value.trim(),
+    openai: document.getElementById('key-openai').value.trim(),
+    groq:   document.getElementById('key-groq').value.trim()
+  };
+
+  // Bỏ qua key rỗng (không ghi đè key cũ)
+  Object.keys(keys).forEach(k => { if (!keys[k]) delete keys[k]; });
+
+  const status = document.getElementById('settings-status');
+  status.textContent = 'Đang lưu...';
+  status.style.color = '#c9a84c';
+
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(keys)
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      status.textContent = '✅ Đã lưu!';
+      status.style.color = '#4caf84';
+      await checkAvailableProviders();
+      setTimeout(closeSettings, 1200);
+    } else {
+      status.textContent = '❌ Lỗi: ' + (data.error || 'Unknown');
+      status.style.color = '#cc4a4a';
+    }
+  } catch (err) {
+    status.textContent = '❌ Không kết nối được server';
+    status.style.color = '#cc4a4a';
+  }
+}
+
+// Đóng modal khi click ra ngoài
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'settings-modal') closeSettings();
+});
 
 // ========== TEMPLATE ==========
 
@@ -116,7 +196,6 @@ async function startGame() {
 
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
-
   document.getElementById('sidebar-name').textContent = name;
   document.getElementById('sidebar-world').textContent = world;
   document.getElementById('sidebar-skill').textContent = skill;
@@ -131,15 +210,9 @@ async function startGame() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, character, provider: selectedProvider })
     });
-
     const data = await res.json();
     removeLoading();
-
-    if (data.error) {
-      addStoryBlock(`❌ Lỗi: ${data.error}`);
-      return;
-    }
-
+    if (data.error) { addStoryBlock(`❌ Lỗi: ${data.error}`); return; }
     addStoryBlock(data.message, data.choices || []);
     updateNPCList(data.npcs);
   } catch (err) {
@@ -168,10 +241,8 @@ async function sendMessage(predefinedMessage = null) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, message })
     });
-
     const data = await res.json();
     removeLoading();
-
     if (data.error) {
       addStoryBlock(`❌ Lỗi: ${data.error}`);
     } else {
@@ -215,7 +286,6 @@ function addStoryBlock(text, choices = []) {
     });
     box.appendChild(choicesDiv);
   }
-
   scrollToBottom();
 }
 
@@ -346,7 +416,6 @@ async function loadGame(savedSessionId) {
   sessions_character = data.character;
   updateNPCList(data.npcs);
   updateAIBadge(selectedProvider);
-
   addStoryBlock('✨ Đã tải game thành công! Tiếp tục hành trình của bạn...');
 }
 
