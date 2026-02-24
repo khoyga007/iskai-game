@@ -1,0 +1,86 @@
+
+/* ========== AI SELECTOR ========== */
+
+.ai-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ai-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #6a7080;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  position: relative;
+}
+
+.ai-btn:hover:not(.unavailable) {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.25);
+  color: #c0b8a8;
+}
+
+.ai-btn.active {
+  background: rgba(201, 168, 76, 0.12);
+  border-color: rgba(201, 168, 76, 0.6);
+  color: #c9a84c;
+  box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
+}
+
+.ai-btn.unavailable {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ai-btn.unavailable::after {
+  content: '🔒';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 0.65rem;
+}
+
+.ai-icon {
+  font-size: 1.1rem;
+}
+
+.ai-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.ai-desc {
+  font-size: 0.68rem;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* AI Badge trong sidebar */
+.ai-badge-sidebar {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 1px;
+  padding: 4px 0;
+}
+
+/* Save card provider label */
+.save-provider {
+  font-size: 0.7rem;
+  font-style: italic;
+  margin-top: 2px;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 1px;
+}

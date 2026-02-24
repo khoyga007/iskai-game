@@ -31,23 +31,56 @@ const TEMPLATES = [
   }
 ];
 
+const AI_PROVIDERS = {
+  gemini: { label: '✦ Gemini', color: '#4285f4' },
+  claude: { label: '◆ Claude', color: '#c96442' },
+  openai: { label: '❋ GPT-4o', color: '#10a37f' },
+  groq:   { label: '⚡ Groq',  color: '#f55036' }
+};
+
+let selectedProvider = 'gemini';
+let sessions_character = null;
+let currentTurnCount = 0;
+const sessionId = Math.random().toString(36).substring(2);
+
+// ========== AI SELECTOR ==========
+
+function selectAI(provider) {
+  selectedProvider = provider;
+  document.querySelectorAll('.ai-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.provider === provider);
+  });
+}
+
+async function checkAvailableProviders() {
+  try {
+    const res = await fetch('/api/providers');
+    const available = await res.json();
+    document.querySelectorAll('.ai-btn').forEach(btn => {
+      const p = btn.dataset.provider;
+      if (!available[p]) {
+        btn.classList.add('unavailable');
+        btn.title = 'Chưa cấu hình API key';
+      }
+    });
+  } catch {}
+}
+
+// ========== TEMPLATE ==========
+
 function loadTemplate(index) {
   const t = TEMPLATES[index];
   document.getElementById('char-name').value = t.name;
   document.getElementById('char-world').value = t.world;
   document.getElementById('char-skill').value = t.skill;
   document.getElementById('char-backstory').value = t.backstory;
-
-  // Highlight nút được chọn
   document.querySelectorAll('.template-btn').forEach((btn, i) => {
     btn.classList.toggle('active', i === index);
   });
 }
 
+// ========== PARTICLES ==========
 
-const sessionId = Math.random().toString(36).substring(2);
-
-// Tạo particles bay lên ở màn hình setup
 function createParticles() {
   const container = document.getElementById('particles');
   for (let i = 0; i < 30; i++) {
@@ -64,6 +97,8 @@ function createParticles() {
 
 createParticles();
 
+// ========== GAME START ==========
+
 async function startGame() {
   const name = document.getElementById('char-name').value.trim();
   const world = document.getElementById('char-world').value.trim();
@@ -77,17 +112,16 @@ async function startGame() {
 
   const character = { name, world, skill, backstory };
   sessions_character = character;
-currentTurnCount = 0;
+  currentTurnCount = 0;
 
-  // Chuyển màn hình
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
 
-  // Cập nhật sidebar
   document.getElementById('sidebar-name').textContent = name;
   document.getElementById('sidebar-world').textContent = world;
   document.getElementById('sidebar-skill').textContent = skill;
   document.getElementById('world-title-top').textContent = world;
+  updateAIBadge(selectedProvider);
 
   addLoading();
 
@@ -95,18 +129,26 @@ currentTurnCount = 0;
     const res = await fetch('/api/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, character })
+      body: JSON.stringify({ sessionId, character, provider: selectedProvider })
     });
 
     const data = await res.json();
     removeLoading();
+
+    if (data.error) {
+      addStoryBlock(`❌ Lỗi: ${data.error}`);
+      return;
+    }
+
     addStoryBlock(data.message, data.choices || []);
-updateNPCList(data.npcs);
+    updateNPCList(data.npcs);
   } catch (err) {
     removeLoading();
     addStoryBlock('Có lỗi xảy ra. Vui lòng thử lại!');
   }
 }
+
+// ========== SEND MESSAGE ==========
 
 async function sendMessage(predefinedMessage = null) {
   const input = document.getElementById('player-input');
@@ -115,10 +157,7 @@ async function sendMessage(predefinedMessage = null) {
   if (!message) return;
 
   input.value = '';
-
-  // Xóa các nút lựa chọn còn lại nếu có
   document.querySelectorAll('.choices-container').forEach(el => el.remove());
-
   addPlayerBlock(message);
   addLoading();
   document.getElementById('send-btn').disabled = true;
@@ -132,8 +171,13 @@ async function sendMessage(predefinedMessage = null) {
 
     const data = await res.json();
     removeLoading();
-    addStoryBlock(data.message, data.choices || []);
-updateNPCList(data.npcs);
+
+    if (data.error) {
+      addStoryBlock(`❌ Lỗi: ${data.error}`);
+    } else {
+      addStoryBlock(data.message, data.choices || []);
+      updateNPCList(data.npcs);
+    }
   } catch (err) {
     removeLoading();
     addStoryBlock('Có lỗi xảy ra. Vui lòng thử lại!');
@@ -142,9 +186,18 @@ updateNPCList(data.npcs);
   document.getElementById('send-btn').disabled = false;
 }
 
+// ========== UI HELPERS ==========
+
+function updateAIBadge(provider) {
+  const badge = document.getElementById('sidebar-ai-badge');
+  if (!badge) return;
+  const info = AI_PROVIDERS[provider] || { label: provider, color: '#888' };
+  badge.textContent = info.label;
+  badge.style.color = info.color;
+}
+
 function addStoryBlock(text, choices = []) {
   const box = document.getElementById('story-content');
-
   const div = document.createElement('div');
   div.className = 'story-block';
   div.textContent = text;
@@ -153,18 +206,13 @@ function addStoryBlock(text, choices = []) {
   if (choices.length > 0) {
     const choicesDiv = document.createElement('div');
     choicesDiv.className = 'choices-container';
-
     choices.forEach(choice => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
       btn.textContent = choice;
-      btn.onclick = () => {
-        choicesDiv.remove();
-        sendMessage(choice);
-      };
+      btn.onclick = () => { choicesDiv.remove(); sendMessage(choice); };
       choicesDiv.appendChild(btn);
     });
-
     box.appendChild(choicesDiv);
   }
 
@@ -186,15 +234,12 @@ function addLoading() {
   div.className = 'loading-block';
   div.id = 'loading-indicator';
   div.innerHTML = `
-    <div class="loading-dots">
-      <span></span><span></span><span></span>
-    </div>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
     <span id="loading-label">Đang khởi động...</span>
   `;
   box.appendChild(div);
   scrollToBottom();
 
-  // Kết nối SSE để nhận tiến trình
   const evtSource = new EventSource(`/api/progress/${sessionId}`);
   evtSource.onmessage = (e) => {
     const data = JSON.parse(e.data);
@@ -203,23 +248,13 @@ function addLoading() {
     if (data.step === 7) evtSource.close();
   };
   evtSource.onerror = () => evtSource.close();
-
-  // Lưu lại để đóng khi xong
   window._sseSource = evtSource;
 }
 
 function removeLoading() {
   const el = document.getElementById('loading-indicator');
   if (el) el.remove();
-  if (window._sseSource) {
-    window._sseSource.close();
-    window._sseSource = null;
-  }
-}
-
-function removeLoading() {
-  const el = document.getElementById('loading-indicator');
-  if (el) el.remove();
+  if (window._sseSource) { window._sseSource.close(); window._sseSource = null; }
 }
 
 function scrollToBottom() {
@@ -230,20 +265,15 @@ function scrollToBottom() {
 function updateNPCList(npcs) {
   const list = document.getElementById('npc-list');
   if (!list || !npcs) return;
-
   list.innerHTML = '';
-
   npcs.forEach(npc => {
     const affinity = npc.affinity || 0;
     const percent = ((affinity + 100) / 200) * 100;
-
-    let color = '#6a7080';
-    let label = 'Trung lập';
+    let color = '#6a7080', label = 'Trung lập';
     if (affinity > 30) { color = '#4caf84'; label = 'Thân thiện'; }
     if (affinity > 60) { color = '#c9a84c'; label = 'Tin tưởng'; }
     if (affinity < -30) { color = '#cc4a4a'; label = 'Thù địch'; }
     if (affinity < -60) { color = '#8b0000'; label = 'Căm ghét'; }
-
     list.innerHTML += `
       <div class="npc-card">
         <div class="npc-name">${npc.name}</div>
@@ -257,29 +287,25 @@ function updateNPCList(npcs) {
   });
 }
 
-// Load danh sách save khi vào trang
+// ========== SAVE / LOAD ==========
+
 async function loadSavesList() {
   const res = await fetch('/api/saves');
   const saves = await res.json();
-
   const section = document.getElementById('continue-section');
   const list = document.getElementById('saves-list');
-
-  if (saves.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-
+  if (saves.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   list.innerHTML = '';
-
   saves.forEach(save => {
     const date = new Date(save.savedAt).toLocaleString('vi-VN');
+    const providerInfo = AI_PROVIDERS[save.provider] || { label: save.provider || 'Gemini', color: '#888' };
     list.innerHTML += `
       <div class="save-card">
         <div class="save-info">
           <div class="save-name">${save.saveName}</div>
           <div class="save-meta">${save.character.name} • ${save.character.world} • ${date}</div>
+          <div class="save-provider" style="color:${providerInfo.color}">${providerInfo.label}</div>
         </div>
         <button class="save-load-btn" onclick="loadGame('${save.sessionId}')">▶ Tiếp tục</button>
         <button class="save-delete-btn" onclick="deleteSave('${save.sessionId}')">🗑</button>
@@ -296,9 +322,7 @@ async function saveGame() {
     body: JSON.stringify({ sessionId, saveName })
   });
   const data = await res.json();
-  if (data.success) {
-    showToast('💾 Đã lưu game!');
-  }
+  if (data.success) showToast('💾 Đã lưu game!');
 }
 
 async function loadGame(savedSessionId) {
@@ -310,10 +334,9 @@ async function loadGame(savedSessionId) {
   const data = await res.json();
   if (!data.success) return;
 
-  // Dùng sessionId của save
   Object.assign(window, { sessionId: savedSessionId });
+  selectedProvider = data.provider || 'gemini';
 
-  // Cập nhật UI
   document.getElementById('setup-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('sidebar-name').textContent = data.character.name;
@@ -322,6 +345,7 @@ async function loadGame(savedSessionId) {
   document.getElementById('world-title-top').textContent = data.character.world;
   sessions_character = data.character;
   updateNPCList(data.npcs);
+  updateAIBadge(selectedProvider);
 
   addStoryBlock('✨ Đã tải game thành công! Tiếp tục hành trình của bạn...');
 }
@@ -339,27 +363,11 @@ function showToast(message) {
     background: rgba(201, 168, 76, 0.9); color: #000;
     padding: 12px 20px; border-radius: 8px;
     font-size: 0.95rem; z-index: 9999;
-    animation: fadeIn 0.3s ease;
   `;
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }
-
-let sessions_character = null;
-let currentTurnCount = 0;
-
-// Enter gửi, Shift+Enter xuống dòng
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('player-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  loadSavesList();
-});
 
 function backToMenu() {
   if (!confirm('Quay về màn hình chính? Hãy lưu game trước nếu chưa lưu!')) return;
@@ -368,3 +376,13 @@ function backToMenu() {
   document.getElementById('story-content').innerHTML = '';
   loadSavesList();
 }
+
+// ========== INIT ==========
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('player-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  loadSavesList();
+  checkAvailableProviders();
+});

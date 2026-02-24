@@ -4,6 +4,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const fs = require('fs-extra');
 const path = require('path');
+const { getProvider } = require('./ai-adapter');
+
 const SAVES_DIR = path.join(__dirname, 'saves');
 fs.ensureDirSync(SAVES_DIR);
 
@@ -21,8 +23,6 @@ const sessions = {};
 const sseClients = {};
 const COLLECTION_NAME = 'isekai_memories';
 const VECTOR_SIZE = 768;
-
-const flash = () => genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
 // ========== QDRANT SETUP ==========
 
@@ -85,7 +85,7 @@ function sendProgress(sessionId, step, label) {
 
 // ========== PIPELINE ==========
 
-async function runPlanner(character, memories, npcs, playerAction, sessionId) {
+async function runPlanner(character, memories, npcs, playerAction, sessionId, callAI) {
   sendProgress(sessionId, 1, '⚙️ Planner đang lên kế hoạch...');
   const npcDesc = npcs.map(n => `- ${n.name} (${n.role}): affinity ${n.affinity}`).join('\n');
   const memoriesText = memories.length > 0 ? memories.join('\n') : '(Chưa có)';
@@ -103,11 +103,10 @@ Lên kế hoạch ngắn gọn (tối đa 100 từ):
 - Tension/conflict
 - NPC nào sẽ xuất hiện`;
 
-  const result = await flash().generateContent(prompt);
-  return result.response.text();
+  return await callAI(prompt);
 }
 
-async function runWorldBuilder(character, plan, memories, sessionId) {
+async function runWorldBuilder(character, plan, memories, sessionId, callAI) {
   sendProgress(sessionId, 2, '🌍 World Builder đang xây dựng bối cảnh...');
   const memoriesText = memories.length > 0 ? memories.join('\n') : '(Chưa có)';
 
@@ -122,11 +121,10 @@ Kiểm tra và bổ sung logic thế giới (tối đa 80 từ):
 - Quy tắc phép thuật/kỹ năng liên quan
 - Yếu tố thế giới cần nhất quán`;
 
-  const result = await flash().generateContent(prompt);
-  return result.response.text();
+  return await callAI(prompt);
 }
 
-async function runNPCSimulator(npcs, plan, playerAction, sessionId) {
+async function runNPCSimulator(npcs, plan, playerAction, sessionId, callAI) {
   sendProgress(sessionId, 3, '🧠 NPC Simulator đang giả lập tâm lý...');
   const npcDesc = npcs.map(n =>
     `- ${n.name} (${n.role}, tính cách: ${n.personality}, affinity: ${n.affinity})`
@@ -143,11 +141,10 @@ Giả lập tâm lý và phản ứng của từng NPC (tối đa 100 từ):
 - Nếu affinity > 30: có thể có cảm xúc tình cảm
 - Nếu affinity < -30: xung đột, thù địch`;
 
-  const result = await flash().generateContent(prompt);
-  return result.response.text();
+  return await callAI(prompt);
 }
 
-async function runRomanceTracker(npcs, plan, npcSimulation, sessionId) {
+async function runRomanceTracker(npcs, plan, npcSimulation, sessionId, callAI) {
   sendProgress(sessionId, 4, '💕 Romance Tracker đang phân tích...');
   const npcDesc = npcs.map(n => `- ${n.name}: affinity ${n.affinity}`).join('\n');
 
@@ -163,11 +160,10 @@ Phân tích romance (tối đa 80 từ):
 - Nếu affinity < 20: xây dựng quan hệ
 - Tránh ép romance không tự nhiên`;
 
-  const result = await flash().generateContent(prompt);
-  return result.response.text();
+  return await callAI(prompt);
 }
 
-async function runWriter(character, plan, worldContext, npcSimulation, romanceAnalysis, history, memories, sessionId) {
+async function runWriter(character, plan, worldContext, npcSimulation, romanceAnalysis, history, memories, sessionId, callAI) {
   sendProgress(sessionId, 5, '✍️ Writer đang chấp bút...');
   const historyText = history.slice(-6).map(h =>
     `${h.role === 'user' ? 'Người chơi' : 'AI'}: ${h.parts[0].text}`
@@ -194,11 +190,10 @@ Cuối bắt buộc thêm:
 [NPC_UPDATE: tên:điểm,tên:điểm]
 [CHOICES: Hành động 1|Hành động 2|Hành động 3]`;
 
-  const result = await flash().generateContent(prompt);
-  return result.response.text();
+  return await callAI(prompt);
 }
 
-async function runCritic(draft, sessionId) {
+async function runCritic(draft, sessionId, callAI) {
   sendProgress(sessionId, 6, '✨ Critic đang chỉnh sửa văn phong...');
 
   const prompt = `Bạn là Critic chỉnh sửa văn phong cho game Isekai romance.
@@ -210,8 +205,7 @@ Chỉnh sửa để văn phong cuốn hút, dramatic, romance tự nhiên.
 Giữ nguyên tất cả thẻ [NEW_NPC:...], [NPC_UPDATE:...], [CHOICES:...]
 Viết bằng Tiếng Việt. Trả về bản đã chỉnh sửa:`;
 
-  const result = await flash().generateContent(prompt);
-  return result.response.text();
+  return await callAI(prompt);
 }
 
 // ========== PARSE ==========
@@ -257,24 +251,37 @@ function parseResponse(aiMessage, existingNpcs) {
 
 // ========== ROUTES ==========
 
+// Kiểm tra provider nào đã được cấu hình API key
+app.get('/api/providers', (req, res) => {
+  const available = {
+    gemini: !!process.env.GEMINI_API_KEY,
+    claude: !!process.env.ANTHROPIC_API_KEY,
+    openai: !!process.env.OPENAI_API_KEY,
+    groq: !!process.env.GROQ_API_KEY
+  };
+  res.json(available);
+});
+
 app.post('/api/start', async (req, res) => {
-  const { sessionId, character } = req.body;
+  const { sessionId, character, provider = 'gemini' } = req.body;
 
   sessions[sessionId] = {
     character,
     history: [],
     turnCount: 0,
-    npcs: []
+    npcs: [],
+    provider
   };
 
   try {
+    const callAI = getProvider(provider);
     const memories = [];
-    const plan = await runPlanner(character, memories, [], 'Bắt đầu câu chuyện', sessionId);
-    const worldContext = await runWorldBuilder(character, plan, memories, sessionId);
-    const npcSimulation = await runNPCSimulator([], plan, 'Bắt đầu câu chuyện', sessionId);
-    const romanceAnalysis = await runRomanceTracker([], plan, npcSimulation, sessionId);
-    const draft = await runWriter(character, plan, worldContext, npcSimulation, romanceAnalysis, [], memories, sessionId);
-    const final = await runCritic(draft, sessionId);
+    const plan = await runPlanner(character, memories, [], 'Bắt đầu câu chuyện', sessionId, callAI);
+    const worldContext = await runWorldBuilder(character, plan, memories, sessionId, callAI);
+    const npcSimulation = await runNPCSimulator([], plan, 'Bắt đầu câu chuyện', sessionId, callAI);
+    const romanceAnalysis = await runRomanceTracker([], plan, npcSimulation, sessionId, callAI);
+    const draft = await runWriter(character, plan, worldContext, npcSimulation, romanceAnalysis, [], memories, sessionId, callAI);
+    const final = await runCritic(draft, sessionId, callAI);
 
     sessions[sessionId].history.push(
       { role: 'user', parts: [{ text: 'Bắt đầu câu chuyện!' }] },
@@ -285,7 +292,6 @@ app.post('/api/start', async (req, res) => {
     const { cleanMessage, choices, npcs } = parseResponse(final, []);
     sessions[sessionId].npcs = npcs;
 
-    // Lưu ký ức mở đầu vào Qdrant
     await saveMemory(sessionId, `Câu chuyện bắt đầu: ${cleanMessage.substring(0, 200)}`, 'event');
 
     sendProgress(sessionId, 7, '✅ Hoàn thành!');
@@ -303,22 +309,21 @@ app.post('/api/chat', async (req, res) => {
   if (!session) return res.status(400).json({ error: 'Session không tồn tại' });
 
   try {
-    // Tìm ký ức liên quan từ Qdrant
+    const callAI = getProvider(session.provider || 'gemini');
     const memories = await searchMemories(sessionId, message, 3);
 
-    const plan = await runPlanner(session.character, memories, session.npcs, message, sessionId);
-    const worldContext = await runWorldBuilder(session.character, plan, memories, sessionId);
-    const npcSimulation = await runNPCSimulator(session.npcs, plan, message, sessionId);
-    const romanceAnalysis = await runRomanceTracker(session.npcs, plan, npcSimulation, sessionId);
-    const draft = await runWriter(session.character, plan, worldContext, npcSimulation, romanceAnalysis, session.history, memories, sessionId);
-    const final = await runCritic(draft, sessionId);
+    const plan = await runPlanner(session.character, memories, session.npcs, message, sessionId, callAI);
+    const worldContext = await runWorldBuilder(session.character, plan, memories, sessionId, callAI);
+    const npcSimulation = await runNPCSimulator(session.npcs, plan, message, sessionId, callAI);
+    const romanceAnalysis = await runRomanceTracker(session.npcs, plan, npcSimulation, sessionId, callAI);
+    const draft = await runWriter(session.character, plan, worldContext, npcSimulation, romanceAnalysis, session.history, memories, sessionId, callAI);
+    const final = await runCritic(draft, sessionId, callAI);
 
     session.history.push(
       { role: 'user', parts: [{ text: message }] },
       { role: 'model', parts: [{ text: final }] }
     );
 
-    // Chỉ giữ 10 tin nhắn gần nhất trong RAM
     if (session.history.length > 10) {
       session.history = session.history.slice(-10);
     }
@@ -328,7 +333,6 @@ app.post('/api/chat', async (req, res) => {
     const { cleanMessage, choices, npcs } = parseResponse(final, session.npcs);
     session.npcs = npcs;
 
-    // Lưu sự kiện quan trọng vào Qdrant
     await saveMemory(sessionId, `Người chơi: ${message} → ${cleanMessage.substring(0, 200)}`, 'event');
 
     sendProgress(sessionId, 7, '✅ Hoàn thành!');
@@ -351,7 +355,8 @@ app.post('/api/save', async (req, res) => {
     character: session.character,
     history: session.history,
     turnCount: session.turnCount,
-    npcs: session.npcs
+    npcs: session.npcs,
+    provider: session.provider
   };
 
   const filePath = path.join(SAVES_DIR, `${sessionId}.json`);
@@ -373,7 +378,8 @@ app.get('/api/saves', async (req, res) => {
         sessionId: file.replace('.json', ''),
         saveName: data.saveName,
         savedAt: data.savedAt,
-        character: data.character
+        character: data.character,
+        provider: data.provider || 'gemini'
       });
     }
 
@@ -398,14 +404,16 @@ app.post('/api/load', async (req, res) => {
     character: saveData.character,
     history: saveData.history,
     turnCount: saveData.turnCount,
-    npcs: saveData.npcs
+    npcs: saveData.npcs,
+    provider: saveData.provider || 'gemini'
   };
 
   res.json({
     success: true,
     character: saveData.character,
     npcs: saveData.npcs,
-    saveName: saveData.saveName
+    saveName: saveData.saveName,
+    provider: saveData.provider || 'gemini'
   });
 });
 

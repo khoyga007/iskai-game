@@ -16,6 +16,8 @@
     "@qdrant/js-client-rest": "^1.17.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "fs-extra": "^11.3.3"
+    "fs-extra": "^11.3.3",
+    "groq-sdk": "^0.37.0",
+    "openai": "^6.24.0"
   }
 }
