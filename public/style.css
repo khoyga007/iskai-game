@@ -719,3 +719,22 @@ body {
   background: rgba(255,255,255,0.1);
   color: #e0d9c8;
 }
+
+.setup-right {
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 20px 0;
+}
+
+.setup-right::-webkit-scrollbar {
+  width: 4px;
+}
+
+.setup-right::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.setup-right::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.3);
+  border-radius: 2px;
+}
