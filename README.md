@@ -17,5 +17,8 @@ Game nhập vai Isekai tương tác với AI, có yếu tố romance.
 - Node.js + Express
 - Google Gemini AI
 - Qdrant Vector Database
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> dc46a4bd527ca4ff008c637800071e1133bee3bb
